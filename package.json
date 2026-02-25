@@ -2,11 +2,12 @@
   "name": "eth-guess",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "pnpm@10.30.1",
   "description": "Price prediction dApp for ETH",
   "scripts": {
-    "dev": "pnpm -r dev",
-    "build": "pnpm -r build",
-    "lint": "pnpm -r lint"
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint"
   },
   "keywords": [
     "blockchain",
@@ -16,5 +17,8 @@
     "siwe"
   ],
   "author": "",
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "turbo": "^2.8.10"
+  }
 }

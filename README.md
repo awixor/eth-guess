@@ -4,7 +4,7 @@ EthGuess is a price-prediction dApp built with Next.js and NestJS.
 
 ## Project Structure
 
-- `apps/frontend`: Next.js application (to be initialized)
+- `apps/frontend`: Next.js application
 - `apps/backend`: NestJS application (to be initialized)
 
 ## Getting Started
