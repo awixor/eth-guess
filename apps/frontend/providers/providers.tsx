@@ -11,6 +11,7 @@ import {
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { config } from "@/config/wagmi";
 import { useTheme } from "next-themes";
+import { useIsMounted } from "@/hooks/use-is-mounted";
 
 const queryClient = new QueryClient();
 
@@ -20,6 +21,9 @@ export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
 
 function RainbowKitWrapper({ children }: { children: React.ReactNode }) {
   const { resolvedTheme } = useTheme();
+  const mounted = useIsMounted();
+
+  if (!mounted) return <>{children}</>;
 
   const theme = resolvedTheme === "dark" ? darkTheme() : lightTheme();
 

@@ -2,9 +2,15 @@
 
 import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
+import { useIsMounted } from "@/hooks/use-is-mounted";
 
 export function ThemeToggle() {
   const { theme, setTheme } = useTheme();
+  const mounted = useIsMounted();
+
+  if (!mounted) {
+    return <div className="p-2 h-9 w-9" />;
+  }
 
   return (
     <button
