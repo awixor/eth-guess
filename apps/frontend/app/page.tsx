@@ -1,4 +1,4 @@
-import { ThemeToggle } from "@/components/theme-toggle";
+import { ThemeToggle } from "@/providers/theme-toggle";
 import { TrendingUp } from "lucide-react";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 
