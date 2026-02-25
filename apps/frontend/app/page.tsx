@@ -1,10 +1,12 @@
 import { ThemeToggle } from "@/components/theme-toggle";
 import { TrendingUp } from "lucide-react";
+import { ConnectButton } from "@rainbow-me/rainbowkit";
 
 export default function Home() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-zinc-50 font-sans dark:bg-black transition-colors">
-      <nav className="absolute top-4 right-4">
+      <nav className="absolute top-4 right-4 flex items-center gap-4">
+        <ConnectButton />
         <ThemeToggle />
       </nav>
       <main className="flex flex-col items-center gap-8 text-center sm:items-start sm:text-left">
