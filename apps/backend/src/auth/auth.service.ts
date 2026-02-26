@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { SiweMessage } from 'siwe';
-import { v4 as uuidv4 } from 'uuid';
+import { randomBytes } from 'crypto';
 import express from 'express';
 import { VerifyAuthDto } from './dto/verify-auth.dto';
 
@@ -30,7 +30,8 @@ export class AuthService {
 
   generateNonce(address: string): string {
     const key = address.toLowerCase();
-    const nonce = uuidv4();
+    // siwe v2 requires alphanumeric nonces (no hyphens, minimum 8 chars)
+    const nonce = randomBytes(16).toString('hex'); // 32 hex chars, alphanumeric
     this.nonceStore.set(key, { nonce, expiresAt: Date.now() + NONCE_TTL_MS });
     return nonce;
   }

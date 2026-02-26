@@ -12,6 +12,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { config } from "@/config/wagmi";
 import { useTheme } from "next-themes";
 import { useIsMounted } from "@/hooks/use-is-mounted";
+import { AuthProvider } from "@/context/auth-context";
 
 const queryClient = new QueryClient();
 
@@ -40,7 +41,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
           enableSystem
           disableTransitionOnChange
         >
-          <RainbowKitWrapper>{children}</RainbowKitWrapper>
+          <RainbowKitWrapper>
+            <AuthProvider>{children}</AuthProvider>
+          </RainbowKitWrapper>
         </ThemeProvider>
       </QueryClientProvider>
     </WagmiProvider>
