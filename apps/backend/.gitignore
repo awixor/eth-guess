@@ -1,0 +1,10 @@
+# NestJS
+dist/
+build/
+
+# TypeScript
+*.tsbuildinfo
+
+# Env vars
+.env
+.env*.local
