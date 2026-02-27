@@ -72,27 +72,11 @@ contract EthGuess {
     // Events
     // -------------------------------------------------------------------------
 
-    event RoundStarted(
-        uint256 indexed roundId,
-        uint256 startPrice,
-        uint256 startTime
-    );
-    event BetPlaced(
-        uint256 indexed roundId,
-        address indexed player,
-        bool guessedUp,
-        uint256 amount
-    );
+    event RoundStarted(uint256 indexed roundId, uint256 startPrice, uint256 startTime);
+    event BetPlaced(uint256 indexed roundId, address indexed player, bool guessedUp, uint256 amount);
     event RoundSettled(uint256 indexed roundId, uint256 endPrice, bool upWon);
-    event WinningsClaimed(
-        uint256 indexed roundId,
-        address indexed player,
-        uint256 amount
-    );
-    event OperatorChanged(
-        address indexed previousOperator,
-        address indexed newOperator
-    );
+    event WinningsClaimed(uint256 indexed roundId, address indexed player, uint256 amount);
+    event OperatorChanged(address indexed previousOperator, address indexed newOperator);
     event MinBetChanged(uint256 newMinBet);
 
     // -------------------------------------------------------------------------
@@ -100,20 +84,19 @@ contract EthGuess {
     // -------------------------------------------------------------------------
 
     modifier onlyOwner() {
-        if (msg.sender != owner) revert EthGuess__NotOwner();
+        _onlyOwner();
         _;
     }
 
     modifier onlyOperator() {
-        if (msg.sender != operator) revert EthGuess__NotOperator();
+        _onlyOperator();
         _;
     }
 
     modifier nonReentrant() {
-        if (_status == 2) revert EthGuess__ReentrancyGuard();
-        _status = 2;
+        _nonReentrantBefore();
         _;
-        _status = 1;
+        _nonReentrantAfter();
     }
 
     // -------------------------------------------------------------------------
@@ -141,8 +124,9 @@ contract EthGuess {
         if (currentRoundId > 0) {
             Round storage currentRound = rounds[currentRoundId];
             if (currentRound.settled) revert EthGuess__InvalidExecuteRound();
-            if (block.timestamp - currentRound.startTime < 60)
+            if (block.timestamp - currentRound.startTime < 60) {
                 revert EthGuess__InvalidExecuteRound();
+            }
 
             currentRound.endPrice = _currentPrice;
             currentRound.endTime = block.timestamp;
@@ -180,15 +164,13 @@ contract EthGuess {
         if (currentRoundId == 0) revert EthGuess__InvalidPlaceBet();
         Round storage round = rounds[currentRoundId];
         if (round.settled == true) revert EthGuess__RoundAlreadySettled();
-        if (block.timestamp - round.startTime > 30)
+        if (block.timestamp - round.startTime > 30) {
             revert EthGuess__BettingWindowClosed();
-        if (bets[currentRoundId][msg.sender].amount > 0)
+        }
+        if (bets[currentRoundId][msg.sender].amount > 0) {
             revert EthGuess__AlreadyPlacedBet();
-        bets[currentRoundId][msg.sender] = Prediction({
-            guessedUp: _guessUp,
-            amount: msg.value,
-            claimed: false
-        });
+        }
+        bets[currentRoundId][msg.sender] = Prediction({guessedUp: _guessUp, amount: msg.value, claimed: false});
         round.totalPool += msg.value;
 
         if (_guessUp) {
@@ -211,8 +193,9 @@ contract EthGuess {
         if (prediction.claimed == true) revert EthGuess__AlreadyClaimed();
 
         bool upWon = round.endPrice > round.startPrice;
-        if (prediction.guessedUp != upWon)
+        if (prediction.guessedUp != upWon) {
             revert EthGuess__InvalidClaimWinnings();
+        }
 
         uint256 winningPool = upWon ? round.upPool : round.downPool;
         if (winningPool == 0) revert EthGuess__PoolEmpty();
@@ -224,7 +207,7 @@ contract EthGuess {
         protocolFee += feeToTake;
         prediction.claimed = true;
 
-        (bool success, ) = payable(msg.sender).call{value: payout}("");
+        (bool success,) = payable(msg.sender).call{value: payout}("");
         if (!success) revert EthGuess__TransferFailed();
         emit WinningsClaimed(_roundId, msg.sender, reward);
     }
@@ -250,7 +233,24 @@ contract EthGuess {
         if (toTransfer == 0) revert EthGuess__NoFeesToWithdraw();
 
         protocolFee = 0;
-        (bool success, ) = _to.call{value: toTransfer}("");
+        (bool success,) = _to.call{value: toTransfer}("");
         if (!success) revert EthGuess__TransferFailed();
+    }
+
+    function _onlyOwner() internal view {
+        if (msg.sender != owner) revert EthGuess__NotOwner();
+    }
+
+    function _onlyOperator() internal view {
+        if (msg.sender != operator) revert EthGuess__NotOperator();
+    }
+
+    function _nonReentrantBefore() internal {
+        if (_status == 2) revert EthGuess__ReentrancyGuard();
+        _status = 2;
+    }
+
+    function _nonReentrantAfter() internal {
+        _status = 1;
     }
 }
