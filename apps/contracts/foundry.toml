@@ -1,0 +1,7 @@
+[profile.default]
+src = 'src'
+out = 'out'
+libs = ['lib']
+
+# If you use NPM/PNPM to install OpenZeppelin instead of forge install:
+# fs_permissions = [{ access = "read", path = "../../node_modules" }]
