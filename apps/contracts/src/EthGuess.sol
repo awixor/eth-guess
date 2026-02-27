@@ -36,16 +36,37 @@ contract EthGuess {
     address public operator; // The backend service wallet that sets prices
     uint256 public minBet; // Minimum wager allowed (in wei)
     uint256 public protocolFee; // Total accumulated fees pending withdrawal
-    uint16 public feePercent; // Protocol fee percentage (e.g. 500 = 5%) - denominator 10000
+    uint16 public feePercent = 500; // Protocol fee percentage (e.g. 500 = 5%) - denominator 10000
 
     uint256 public currentRoundId;
 
-    // TODO: Add mapping for storing rounds (roundId => Round)
-
-    // TODO: Add mapping for storing bets (roundId => (player => Prediction))
+    mapping(uint256 => Round) public rounds;
+    mapping(uint256 => mapping(address => Prediction)) public bets;
 
     // A simple reentrancy lock status (1 = unlocked, 2 = locked)
     uint256 private _status;
+
+    // -------------------------------------------------------------------------
+    // Errors
+    // -------------------------------------------------------------------------
+
+    error EthGuess__NotOwner();
+    error EthGuess__NotOperator();
+    error EthGuess__PoolEmpty();
+    error EthGuess__ReentrancyGuard();
+    error EthGuess__NoFeesToWithdraw();
+    error EthGuess__RoundAlreadySettled();
+    error EthGuess__TransferFailed();
+    error EthGuess__RoundNotSettled();
+    error EthGuess__BettingWindowClosed();
+    error EthGuess__AlreadyPlacedBet();
+    error EthGuess__AlreadyClaimed();
+    error EthGuess__InvalidOperator();
+    error EthGuess__InvalidMinBet();
+    error EthGuess__InvalidExecuteRound();
+    error EthGuess__InvalidPlaceBet();
+    error EthGuess__InvalidClaimWinnings();
+    error EthGuess__InvalidSetMinBet();
 
     // -------------------------------------------------------------------------
     // Events
@@ -79,17 +100,17 @@ contract EthGuess {
     // -------------------------------------------------------------------------
 
     modifier onlyOwner() {
-        require(msg.sender == owner, "EthGuess: Caller is not owner");
+        if (msg.sender != owner) revert EthGuess__NotOwner();
         _;
     }
 
     modifier onlyOperator() {
-        require(msg.sender == operator, "EthGuess: Caller is not operator");
+        if (msg.sender != operator) revert EthGuess__NotOperator();
         _;
     }
 
     modifier nonReentrant() {
-        require(_status != 2, "EthGuess: ReentrancyGuard: reentrant call");
+        if (_status == 2) revert EthGuess__ReentrancyGuard();
         _status = 2;
         _;
         _status = 1;
@@ -100,10 +121,10 @@ contract EthGuess {
     // -------------------------------------------------------------------------
 
     constructor(address _operator) {
-        require(_operator != address(0), "EthGuess: Invalid operator");
+        if (_operator == address(0)) revert EthGuess__InvalidOperator();
         owner = msg.sender;
         operator = _operator;
-        minBet = 0.001 ether; // Default min bet
+        minBet = 0.00001 ether;
         feePercent = 500; // Default 5% protocol fee
         _status = 1;
     }
@@ -113,30 +134,38 @@ contract EthGuess {
     // -------------------------------------------------------------------------
 
     /**
-     * @dev Called by backend oracle every minute to start a new round.
+     * @dev Called by backend oracle every minute to settle the current round and start a new one.
      */
-    function startRound(uint256 _startPrice) external onlyOperator {
-        // TODO: Implement start round logic
-        // 1. Check if there's a previous round, ensure it was settled.
-        // 2. Increment currentRoundId
-        // 3. Set the Round struct logic (startPrice, startTime = block.timestamp)
-        // 4. Emit RoundStarted event
-    }
+    function executeRound(uint256 _currentPrice) external onlyOperator {
+        // 1. Settle the current active round
+        if (currentRoundId > 0) {
+            Round storage currentRound = rounds[currentRoundId];
+            if (currentRound.settled) revert EthGuess__InvalidExecuteRound();
+            if (block.timestamp - currentRound.startTime < 60)
+                revert EthGuess__InvalidExecuteRound();
 
-    /**
-     * @dev Called by backend operator to conclude the round and set the final price.
-     */
-    function settleRound(
-        uint256 _roundId,
-        uint256 _endPrice
-    ) external onlyOperator {
-        // TODO: Implement settling logic
-        // 1. Get the round from mapping
-        // 2. Ensure it hasn't been settled yet and it has actually started
-        // 3. Ensure at least 60 seconds have passed since start time
-        // 4. Update the round properties (endPrice, endTime = block.timestamp, settled = true)
-        // 5. Determine if UP won (_endPrice > r.startPrice)
-        // 6. Emit RoundSettled event
+            currentRound.endPrice = _currentPrice;
+            currentRound.endTime = block.timestamp;
+            currentRound.settled = true;
+
+            bool upWon = _currentPrice > currentRound.startPrice;
+            emit RoundSettled(currentRoundId, _currentPrice, upWon);
+        }
+
+        // 2. Start the next round
+        currentRoundId++;
+        rounds[currentRoundId] = Round({
+            startPrice: _currentPrice,
+            endPrice: 0,
+            startTime: block.timestamp,
+            endTime: 0,
+            totalPool: 0,
+            upPool: 0,
+            downPool: 0,
+            settled: false
+        });
+
+        emit RoundStarted(currentRoundId, _currentPrice, block.timestamp);
     }
 
     // -------------------------------------------------------------------------
@@ -147,32 +176,57 @@ contract EthGuess {
      * @dev User actively places a wager on the current active round.
      */
     function placeBet(bool _guessUp) external payable nonReentrant {
-        // TODO: Implement betting logic
-        // 1. Require msg.value >= minBet
-        // 2. Require currentRoundId > 0
-        // 3. Require the current round is not settled
-        // 4. Require the block.timestamp is within 30 seconds of the round's startTime
-        // 5. Ensure user hasn't already bet on this round
-        // 6. Store the prediction
-        // 7. Update totalPool, upPool, or downPool depending on guess
-        // 8. Emit BetPlaced event
+        if (msg.value < minBet) revert EthGuess__InvalidMinBet();
+        if (currentRoundId == 0) revert EthGuess__InvalidPlaceBet();
+        Round storage round = rounds[currentRoundId];
+        if (round.settled == true) revert EthGuess__RoundAlreadySettled();
+        if (block.timestamp - round.startTime > 30)
+            revert EthGuess__BettingWindowClosed();
+        if (bets[currentRoundId][msg.sender].amount > 0)
+            revert EthGuess__AlreadyPlacedBet();
+        bets[currentRoundId][msg.sender] = Prediction({
+            guessedUp: _guessUp,
+            amount: msg.value,
+            claimed: false
+        });
+        round.totalPool += msg.value;
+
+        if (_guessUp) {
+            round.upPool += msg.value;
+        } else {
+            round.downPool += msg.value;
+        }
+        emit BetPlaced(currentRoundId, msg.sender, _guessUp, msg.value);
     }
 
     /**
      * @dev Winners call this to withdraw their share of the prize pool.
      */
     function claimWinnings(uint256 _roundId) external nonReentrant {
-        // TODO: Implement claiming logic
-        // 1. Require the round is settled
-        // 2. Require user has placed a bet and hasn't already claimed
-        // 3. Determine if the user guessed correctly (upWon = r.endPrice > r.startPrice)
-        // 4. Calculate the reward based on pool size (pari-mutuel payout)
-        //    Formula: (user.amount * totalPool) / winningPool (watch out for edge cases like everyone winning)
-        // 5. Calculate protocol fee (5% of reward)
-        // 6. Deduct fee, add to protocolFee state var
-        // 7. Mark user prediction as claimed
-        // 8. Transfer payout to user
-        // 9. Emit WinningsClaimed event
+        Round storage round = rounds[_roundId];
+        if (round.settled == false) revert EthGuess__RoundNotSettled();
+
+        Prediction storage prediction = bets[_roundId][msg.sender];
+        if (prediction.amount == 0) revert EthGuess__InvalidClaimWinnings();
+        if (prediction.claimed == true) revert EthGuess__AlreadyClaimed();
+
+        bool upWon = round.endPrice > round.startPrice;
+        if (prediction.guessedUp != upWon)
+            revert EthGuess__InvalidClaimWinnings();
+
+        uint256 winningPool = upWon ? round.upPool : round.downPool;
+        if (winningPool == 0) revert EthGuess__PoolEmpty();
+
+        uint256 reward = (prediction.amount * round.totalPool) / winningPool;
+        uint256 feeToTake = (reward * feePercent) / 10000;
+        uint256 payout = reward - feeToTake;
+
+        protocolFee += feeToTake;
+        prediction.claimed = true;
+
+        (bool success, ) = payable(msg.sender).call{value: payout}("");
+        if (!success) revert EthGuess__TransferFailed();
+        emit WinningsClaimed(_roundId, msg.sender, reward);
     }
 
     // -------------------------------------------------------------------------
@@ -180,22 +234,23 @@ contract EthGuess {
     // -------------------------------------------------------------------------
 
     function setMinBet(uint256 _newMinBet) external onlyOwner {
+        if (_newMinBet == 0) revert EthGuess__InvalidSetMinBet();
         minBet = _newMinBet;
         emit MinBetChanged(_newMinBet);
     }
 
     function changeOperator(address _newOperator) external onlyOwner {
-        require(_newOperator != address(0), "EthGuess: Invalid operator");
+        if (_newOperator == address(0)) revert EthGuess__InvalidOperator();
         emit OperatorChanged(operator, _newOperator);
         operator = _newOperator;
     }
 
     function withdrawFees(address payable _to) external onlyOwner nonReentrant {
         uint256 toTransfer = protocolFee;
-        require(toTransfer > 0, "EthGuess: No fees to withdraw");
+        if (toTransfer == 0) revert EthGuess__NoFeesToWithdraw();
 
         protocolFee = 0;
         (bool success, ) = _to.call{value: toTransfer}("");
-        require(success, "EthGuess: Transfer failed");
+        if (!success) revert EthGuess__TransferFailed();
     }
 }
