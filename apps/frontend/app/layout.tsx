@@ -29,14 +29,16 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col bg-zinc-50 dark:bg-black text-zinc-900 dark:text-zinc-100 transition-colors`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-zinc-50 dark:bg-black text-zinc-900 dark:text-zinc-100 transition-colors`}
       >
         <Providers>
-          <Header />
-          <main className="flex-1 flex flex-col w-full relative">
-            {children}
-          </main>
-          <Footer />
+          <div className="min-h-screen flex flex-col">
+            <Header />
+            <main className="flex-1 flex flex-col w-full relative">
+              {children}
+            </main>
+            <Footer />
+          </div>
         </Providers>
       </body>
     </html>

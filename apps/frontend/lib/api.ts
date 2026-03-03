@@ -80,6 +80,41 @@ export async function fetchMe(): Promise<AuthUser | null> {
   return data;
 }
 
+export interface PriceResponse {
+  price: number;
+}
+
+export interface RoundResponse {
+  roundId: number;
+  startPrice: string;
+  startTime: number;
+  totalPool: string;
+  upPool: string;
+  downPool: string;
+  settled: boolean;
+  status?: string;
+}
+
+/** GET /api/price/current */
+export async function fetchCurrentPrice(): Promise<number> {
+  const res = await fetch(`${API_BASE}${ROUTES.price.current}`, {
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(await parseError(res));
+  const data: PriceResponse = await res.json();
+  return data.price;
+}
+
+/** GET /api/game/current-round */
+export async function fetchCurrentRound(): Promise<RoundResponse> {
+  const res = await fetch(`${API_BASE}${ROUTES.game.currentRound}`, {
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(await parseError(res));
+  const data: RoundResponse = await res.json();
+  return data;
+}
+
 /** POST /api/auth/logout */
 export async function logout(): Promise<LogoutResponse> {
   const res = await fetch(`${API_BASE}${ROUTES.auth.logout}`, {

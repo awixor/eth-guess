@@ -6,7 +6,7 @@ import { ActionButtons } from "@/components/game/action-buttons";
 
 interface CurrentRoundCardProps {
   endTimeMs: number;
-  onTimerComplete: () => void;
+  onTimerComplete?: () => void;
   upPercentage: number;
   onBetUp: () => void;
   onBetDown: () => void;
