@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createPublicClient, http, formatEther, PublicClient } from 'viem';
-import { localhost, sepolia } from 'viem/chains';
+import { foundry, sepolia } from 'viem/chains';
 import { JwtPayload } from '../../auth/decorators/current-user.decorator';
 import { Request } from 'express';
 
@@ -25,7 +25,7 @@ export class MinBalanceGuard implements CanActivate {
       'RPC_URL',
       'http://127.0.0.1:8545',
     );
-    const chain = rpcUrl.includes('sepolia') ? sepolia : localhost;
+    const chain = rpcUrl.includes('sepolia') ? sepolia : foundry;
 
     this.publicClient = createPublicClient({
       chain,

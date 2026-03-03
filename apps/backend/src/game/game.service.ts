@@ -10,7 +10,7 @@ import {
   WalletClient,
 } from 'viem';
 import { privateKeyToAccount, PrivateKeyAccount } from 'viem/accounts';
-import { localhost, sepolia } from 'viem/chains';
+import { foundry, sepolia } from 'viem/chains';
 import { PriceService } from '../price/price.service';
 import { EthGuessABI } from './EthGuessABI';
 
@@ -51,7 +51,7 @@ export class GameService implements OnModuleInit {
     this.contractAddress = (contractAddr ||
       '0x0000000000000000000000000000000000000000') as `0x${string}`;
     this.account = privateKeyToAccount(privateKey as `0x${string}`);
-    const chain = rpcUrl.includes('sepolia') ? sepolia : localhost;
+    const chain = rpcUrl.includes('sepolia') ? sepolia : foundry;
 
     this.publicClient = createPublicClient({
       chain,
