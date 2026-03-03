@@ -13,6 +13,7 @@ import { VerifyAuthDto } from './dto/verify-auth.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
 import type { JwtPayload } from './decorators/current-user.decorator';
+import { Response } from 'express';
 
 @Controller('auth')
 export class AuthController {
@@ -43,12 +44,9 @@ export class AuthController {
   @HttpCode(200)
   async verify(
     @Body() dto: VerifyAuthDto,
-    @Res({ passthrough: true }) res: never,
+    @Res({ passthrough: true }) res: Response,
   ): Promise<{ address: string }> {
-    return this.authService.verifyAndLogin(
-      dto,
-      res as unknown as import('express').Response,
-    );
+    return this.authService.verifyAndLogin(dto, res);
   }
 
   /**
@@ -57,8 +55,8 @@ export class AuthController {
    */
   @Post('logout')
   @HttpCode(200)
-  logout(@Res({ passthrough: true }) res: never): { message: string } {
-    this.authService.logout(res as unknown as import('express').Response);
+  logout(@Res({ passthrough: true }) res: Response): { message: string } {
+    this.authService.logout(res);
     return { message: 'Logged out successfully.' };
   }
 
