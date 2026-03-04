@@ -53,10 +53,10 @@ export class MinBalanceGuard implements CanActivate {
 
       if (balanceInEth < 0.1) {
         this.logger.warn(
-          `MinBalanceGuard rejected ${user.address} (Balance: ${balanceInEth} ETH)`,
+          `MinBalanceGuard rejected ${user.address} (Balance: ${balanceInEth} Eth)`,
         );
         throw new ForbiddenException(
-          'Insufficient balance. You need at least 0.1 ETH to enter the Whale Room.',
+          'Insufficient balance. You need at least 0.1 Eth to enter the Whale Room.',
         );
       }
 

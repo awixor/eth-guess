@@ -126,31 +126,40 @@ export class GameService implements OnModuleInit {
       });
 
       if (currentRoundId === 0n) {
-        return { currentRoundId: 0, status: 'NOT_STARTED' };
+        return {
+          roundId: 0,
+          startPrice: '0',
+          startTime: 0,
+          endTime: 0,
+          serverTime: Math.floor(Date.now() / 1000),
+          totalPool: '0',
+          upPool: '0',
+          downPool: '0',
+          settled: false,
+          status: 'NOT_STARTED',
+        };
       }
 
-      // Viem returns readonly sets based on the ABI output tuple
-      const roundData = (await this.publicClient.readContract({
-        address: this.contractAddress,
-        abi: EthGuessABI,
-        functionName: 'rounds',
-        args: [currentRoundId],
-      })) as readonly [
-        bigint,
-        bigint,
-        bigint,
-        bigint,
-        bigint,
-        bigint,
-        bigint,
-        boolean,
-      ];
+      const [roundData, block] = await Promise.all([
+        this.publicClient.readContract({
+          address: this.contractAddress,
+          abi: EthGuessABI,
+          functionName: 'rounds',
+          args: [currentRoundId],
+        }),
+        this.publicClient.getBlock({ blockTag: 'latest' }),
+      ]);
+
+      const startTime = Number(roundData[2]);
+      const endTime = roundData[7] ? Number(roundData[3]) : startTime + 60;
 
       return {
         roundId: Number(currentRoundId),
         startPrice: formatUnits(roundData[0], 8),
-        startTime: Number(roundData[2]),
-        totalPool: formatUnits(roundData[4], 18), // ETH uses 18 decimals
+        startTime,
+        endTime,
+        serverTime: Number(block.timestamp),
+        totalPool: formatUnits(roundData[4], 18),
         upPool: formatUnits(roundData[5], 18),
         downPool: formatUnits(roundData[6], 18),
         settled: roundData[7],
@@ -160,6 +169,15 @@ export class GameService implements OnModuleInit {
         `Error fetching round data: ${error instanceof Error ? error.message : String(error)}`,
       );
       return {
+        roundId: 0,
+        startPrice: '0',
+        startTime: 0,
+        endTime: 0,
+        serverTime: Math.floor(Date.now() / 1000),
+        totalPool: '0',
+        upPool: '0',
+        downPool: '0',
+        settled: false,
         status: 'ERROR_FETCHING_DATA',
         details: error instanceof Error ? error.message : String(error),
       };

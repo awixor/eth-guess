@@ -1,23 +1,40 @@
 "use client";
 
 import { PriceTicker } from "@/components/game/price-ticker";
-import { LeaderboardPlaceholder } from "@/components/game/leaderboard-placeholder";
+import { Leaderboard } from "@/components/game/leaderboard";
 import { AuthGate } from "@/components/game/auth-gate";
 import { useState, useEffect } from "react";
 import { AnimatePresence } from "framer-motion";
+import { useGame } from "@/hooks/use-game";
 
 export function GameDashboard() {
-  const [price, setPrice] = useState(2842.45);
-  const [prevPrice, setPrevPrice] = useState(2840.12);
-  const [endTimeMs, setEndTimeMs] = useState(() => Date.now() + 60000);
+  const { price, round, isLoading } = useGame();
+  const [prevPrice, setPrevPrice] = useState(price);
+  const [syncedEndTimeMs, setSyncedEndTimeMs] = useState(0);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setPrevPrice(price);
-      setPrice((p) => p + (Math.random() * 10 - 5));
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [price]);
+    if (price !== prevPrice) {
+      const timeout = setTimeout(() => setPrevPrice(price), 5000);
+      return () => clearTimeout(timeout);
+    }
+  }, [price, prevPrice]);
+
+  useEffect(() => {
+    if (round) {
+      const remainingSeconds = Math.max(0, round.endTime - round.serverTime);
+
+      const target = Date.now() + remainingSeconds * 1000;
+      setTimeout(() => setSyncedEndTimeMs(target), 0);
+    }
+  }, [round?.endTime, round?.serverTime, round?.roundId, round]);
+
+  if (isLoading && !round) {
+    return (
+      <div className="flex flex-1 items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-1 flex-col items-center justify-start font-sans overflow-hidden w-full relative pt-8 pb-12">
@@ -26,7 +43,7 @@ export function GameDashboard() {
       <div className="flex flex-col items-center w-full max-w-4xl px-4 md:px-6 z-10 relative gap-8 text-center pt-8">
         <div className="flex flex-col items-center gap-2">
           <h2 className="text-zinc-500 dark:text-zinc-400 font-bold tracking-[0.25em] uppercase text-xs md:text-sm">
-            Live ETH/USD Round
+            Live ETH/USD Round #{round?.roundId ?? "..."}
           </h2>
           <PriceTicker
             price={price}
@@ -36,13 +53,10 @@ export function GameDashboard() {
         </div>
 
         <AnimatePresence mode="wait">
-          <AuthGate
-            endTimeMs={endTimeMs}
-            onTimerComplete={() => setEndTimeMs(Date.now() + 60000)}
-          />
+          <AuthGate round={round} endTimeMs={syncedEndTimeMs} />
         </AnimatePresence>
 
-        <LeaderboardPlaceholder />
+        <Leaderboard />
       </div>
     </div>
   );

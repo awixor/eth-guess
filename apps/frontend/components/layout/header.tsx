@@ -5,6 +5,7 @@ import { ThemeToggle } from "@/providers/theme-toggle";
 import Link from "next/link";
 import { useAuth } from "@/context/auth-context";
 import { LogOut } from "lucide-react";
+import { ChainSwitcher } from "./chain-switcher";
 
 export function Header() {
   const { user, signOut, isLoading } = useAuth();
@@ -29,6 +30,8 @@ export function Header() {
         </Link>
 
         <div className="flex items-center gap-3">
+          <ChainSwitcher />
+
           {user && (
             <div className="flex items-center gap-2">
               <span className="text-xs font-mono text-zinc-500 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-white/10 rounded-lg px-2.5 py-1.5">

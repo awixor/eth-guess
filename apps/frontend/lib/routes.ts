@@ -8,6 +8,13 @@ export const ROUTES = {
     me: "/auth/me",
     logout: "/auth/logout",
   },
+  game: {
+    currentRound: "/game/current-round",
+    whaleRoom: "/game/whale-room",
+  },
+  price: {
+    current: "/price/current",
+  },
 } as const;
 
 /**
@@ -18,5 +25,12 @@ export const ROUTES = {
 export const QUERY_KEYS = {
   auth: {
     me: ["auth", "me"] as const,
+  },
+  game: {
+    round: ["game", "round"] as const,
+    whaleRoom: ["game", "whale-room"] as const,
+  },
+  price: {
+    current: ["price", "current"] as const,
   },
 } as const;

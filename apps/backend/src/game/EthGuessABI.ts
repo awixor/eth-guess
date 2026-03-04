@@ -79,4 +79,115 @@ export const EthGuessABI = [
     ],
     stateMutability: 'view',
   },
+  {
+    type: 'function',
+    name: 'placeBet',
+    inputs: [
+      {
+        name: '_guessUp',
+        type: 'bool',
+        internalType: 'bool',
+      },
+    ],
+    outputs: [],
+    stateMutability: 'payable',
+  },
+  {
+    type: 'function',
+    name: 'claimWinnings',
+    inputs: [
+      {
+        name: '_roundId',
+        type: 'uint256',
+        internalType: 'uint256',
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'error',
+    name: 'EthGuess__NotOwner',
+    inputs: [],
+  },
+  {
+    type: 'error',
+    name: 'EthGuess__NotOperator',
+    inputs: [],
+  },
+  {
+    type: 'error',
+    name: 'EthGuess__PoolEmpty',
+    inputs: [],
+  },
+  {
+    type: 'error',
+    name: 'EthGuess__ReentrancyGuard',
+    inputs: [],
+  },
+  {
+    type: 'error',
+    name: 'EthGuess__NoFeesToWithdraw',
+    inputs: [],
+  },
+  {
+    type: 'error',
+    name: 'EthGuess__RoundAlreadySettled',
+    inputs: [],
+  },
+  {
+    type: 'error',
+    name: 'EthGuess__TransferFailed',
+    inputs: [],
+  },
+  {
+    type: 'error',
+    name: 'EthGuess__RoundNotSettled',
+    inputs: [],
+  },
+  {
+    type: 'error',
+    name: 'EthGuess__BettingWindowClosed',
+    inputs: [],
+  },
+  {
+    type: 'error',
+    name: 'EthGuess__AlreadyPlacedBet',
+    inputs: [],
+  },
+  {
+    type: 'error',
+    name: 'EthGuess__AlreadyClaimed',
+    inputs: [],
+  },
+  {
+    type: 'error',
+    name: 'EthGuess__InvalidOperator',
+    inputs: [],
+  },
+  {
+    type: 'error',
+    name: 'EthGuess__InvalidMinBet',
+    inputs: [],
+  },
+  {
+    type: 'error',
+    name: 'EthGuess__InvalidExecuteRound',
+    inputs: [],
+  },
+  {
+    type: 'error',
+    name: 'EthGuess__InvalidPlaceBet',
+    inputs: [],
+  },
+  {
+    type: 'error',
+    name: 'EthGuess__InvalidClaimWinnings',
+    inputs: [],
+  },
+  {
+    type: 'error',
+    name: 'EthGuess__InvalidSetMinBet',
+    inputs: [],
+  },
 ] as const;

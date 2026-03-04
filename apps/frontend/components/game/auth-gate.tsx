@@ -1,18 +1,31 @@
 "use client";
 
-import { CurrentRoundCard } from "@/components/game/current-round-card";
-import { SignInButton } from "@/components/auth/sign-in-button";
 import { useAuth } from "@/context/auth-context";
+import { useGame } from "@/hooks/use-game";
+import { RoundResponse } from "@/lib/api";
 import { motion } from "framer-motion";
 import { Loader2 } from "lucide-react";
+import { CurrentRoundCard } from "@/components/game/current-round-card";
+import { SignInButton } from "@/components/auth/sign-in-button";
 
 interface AuthGateProps {
+  round?: RoundResponse;
   endTimeMs: number;
-  onTimerComplete: () => void;
 }
 
-export function AuthGate({ endTimeMs, onTimerComplete }: AuthGateProps) {
-  const { user, isLoading } = useAuth();
+export function AuthGate({ round, endTimeMs }: AuthGateProps) {
+  const { user, isLoading: isAuthLoading } = useAuth();
+  const { placeBet, isActionPending } = useGame();
+
+  const handleBet = async (guessUp: boolean) => {
+    try {
+      await placeBet(guessUp, "0.01"); // Default bet for testing
+    } catch (e) {
+      console.error("Bet failed", e);
+    }
+  };
+
+  const isLoading = isAuthLoading || isActionPending;
 
   if (isLoading) {
     return (
@@ -32,6 +45,10 @@ export function AuthGate({ endTimeMs, onTimerComplete }: AuthGateProps) {
   }
 
   if (user) {
+    const total = parseFloat(round?.totalPool || "0");
+    const up = parseFloat(round?.upPool || "0");
+    const upPercentage = total > 0 ? Math.round((up / total) * 100) : 50;
+
     return (
       <motion.div
         key="game"
@@ -42,14 +59,17 @@ export function AuthGate({ endTimeMs, onTimerComplete }: AuthGateProps) {
       >
         <CurrentRoundCard
           endTimeMs={endTimeMs}
-          onTimerComplete={onTimerComplete}
-          upPercentage={62}
-          onBetUp={() => console.log("UP")}
-          onBetDown={() => console.log("DOWN")}
+          upPercentage={upPercentage}
+          onBetUp={() => handleBet(true)}
+          onBetDown={() => handleBet(false)}
         />
       </motion.div>
     );
   }
+
+  const total = parseFloat(round?.totalPool || "0");
+  const up = parseFloat(round?.upPool || "0");
+  const upPercentage = total > 0 ? Math.round((up / total) * 100) : 50;
 
   return (
     <motion.div
@@ -63,8 +83,7 @@ export function AuthGate({ endTimeMs, onTimerComplete }: AuthGateProps) {
         <div className="pointer-events-none select-none blur-sm opacity-40 p-4">
           <CurrentRoundCard
             endTimeMs={endTimeMs}
-            onTimerComplete={() => {}}
-            upPercentage={62}
+            upPercentage={upPercentage}
             onBetUp={() => {}}
             onBetDown={() => {}}
           />
