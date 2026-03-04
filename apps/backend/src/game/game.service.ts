@@ -13,6 +13,8 @@ import { privateKeyToAccount, PrivateKeyAccount } from 'viem/accounts';
 import { foundry, sepolia } from 'viem/chains';
 import { PriceService } from '../price/price.service';
 import { EthGuessABI } from './EthGuessABI';
+import { GameGateway } from './game.gateway';
+import { RoundInfo } from './types/game.types';
 
 @Injectable()
 export class GameService implements OnModuleInit {
@@ -21,10 +23,16 @@ export class GameService implements OnModuleInit {
   private walletClient: WalletClient;
   private account: PrivateKeyAccount;
   private contractAddress: `0x${string}`;
+  private isExecuting = false;
+
+  private sleep(ms: number) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
 
   constructor(
     private readonly configService: ConfigService,
     private readonly priceService: PriceService,
+    private readonly gameGateway: GameGateway,
   ) {}
 
   onModuleInit() {
@@ -76,19 +84,29 @@ export class GameService implements OnModuleInit {
    */
   @Cron(CronExpression.EVERY_MINUTE)
   async handleExecuteRound() {
-    if (this.contractAddress === '0x0000000000000000000000000000000000000000') {
+    if (
+      this.contractAddress === '0x0000000000000000000000000000000000000000' ||
+      this.isExecuting
+    ) {
+      if (this.isExecuting) {
+        this.logger.warn('[Oracle] Execution already in progress, skipping...');
+      }
       return;
     }
 
-    const currentPriceFloat = this.priceService.getCurrentPrice();
-    // Assuming the contract price expects 8 decimals (like chainlink)
-    const priceWithDecimals = BigInt(Math.floor(currentPriceFloat * 1e8));
-
-    this.logger.log(
-      `[Oracle] Attempting to execute round with price: $${currentPriceFloat} (${priceWithDecimals})`,
-    );
-
+    this.isExecuting = true;
     try {
+      // Add 2s buffer to ensure blockchain clock has ticked past the minute
+      await this.sleep(2000);
+
+      const currentPriceFloat = this.priceService.getCurrentPrice();
+      // Assuming the contract price expects 8 decimals (like chainlink)
+      const priceWithDecimals = BigInt(Math.floor(currentPriceFloat * 1e8));
+
+      this.logger.log(
+        `[Oracle] Attempting to execute round with price: $${currentPriceFloat} (${priceWithDecimals})`,
+      );
+
       // Simulate first to catch reverts quickly (e.g. TooEarly)
       const { request } = await this.publicClient.simulateContract({
         address: this.contractAddress,
@@ -103,17 +121,27 @@ export class GameService implements OnModuleInit {
 
       await this.publicClient.waitForTransactionReceipt({ hash: txHash });
       this.logger.log(`[Oracle] Round successfully executed and mined.`);
+
+      // Emit WebSocket events to notify clients
+      const roundInfo = await this.getCurrentRoundInfo();
+      if ('roundId' in roundInfo && roundInfo.roundId !== 0) {
+        this.gameGateway.emitRoundStarted(roundInfo);
+      }
     } catch (error) {
       this.logger.error(
         `[Oracle] Failed to execute round: ${error instanceof Error ? error.message : String(error)}`,
       );
+    } finally {
+      this.isExecuting = false;
     }
   }
 
   /**
    * Helper function for the Backend API to expose current round data
    */
-  async getCurrentRoundInfo() {
+  async getCurrentRoundInfo(): Promise<
+    RoundInfo | { status: string; details?: string }
+  > {
     if (this.contractAddress === '0x0000000000000000000000000000000000000000') {
       return { status: 'CONTRACT_NOT_CONFIGURED' };
     }
@@ -136,6 +164,7 @@ export class GameService implements OnModuleInit {
           upPool: '0',
           downPool: '0',
           settled: false,
+          remainingTime: 0,
           status: 'NOT_STARTED',
         };
       }
@@ -163,6 +192,7 @@ export class GameService implements OnModuleInit {
         upPool: formatUnits(roundData[5], 18),
         downPool: formatUnits(roundData[6], 18),
         settled: roundData[7],
+        remainingTime: Math.max(0, endTime - Number(block.timestamp)),
       };
     } catch (error) {
       this.logger.error(
@@ -178,6 +208,7 @@ export class GameService implements OnModuleInit {
         upPool: '0',
         downPool: '0',
         settled: false,
+        remainingTime: 0,
         status: 'ERROR_FETCHING_DATA',
         details: error instanceof Error ? error.message : String(error),
       };

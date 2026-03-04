@@ -27,7 +27,9 @@
     "@nestjs/jwt": "^11.0.2",
     "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^11.0.1",
+    "@nestjs/platform-socket.io": "^11.1.15",
     "@nestjs/schedule": "^6.1.1",
+    "@nestjs/websockets": "^11.1.15",
     "cookie-parser": "^1.4.7",
     "cron": "^4.4.0",
     "dotenv": "^17.3.1",
@@ -36,6 +38,7 @@
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "siwe": "^2.3.2",
+    "socket.io": "^4.8.3",
     "uuid": "^13.0.0",
     "viem": "^2.46.3"
   },

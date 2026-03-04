@@ -30,24 +30,26 @@ export function Header() {
         </Link>
 
         <div className="flex items-center gap-3">
-          <ChainSwitcher />
-
           {user && (
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-mono text-zinc-500 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-white/10 rounded-lg px-2.5 py-1.5">
-                {user.address.slice(0, 6)}…{user.address.slice(-4)}
-              </span>
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => void signOut()}
-                disabled={isLoading}
-                title="Sign out"
-                className="p-1.5 rounded-lg cursor-pointer text-zinc-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors disabled:opacity-50"
-              >
-                <LogOut className="w-4 h-4" />
-              </motion.button>
-            </div>
+            <>
+              <ChainSwitcher />
+
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-mono text-zinc-500 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-white/10 rounded-lg px-2.5 py-1.5">
+                  {user.address.slice(0, 6)}…{user.address.slice(-4)}
+                </span>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => void signOut()}
+                  disabled={isLoading}
+                  title="Sign out"
+                  className="p-1.5 rounded-lg cursor-pointer text-zinc-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors disabled:opacity-50"
+                >
+                  <LogOut className="w-4 h-4" />
+                </motion.button>
+              </div>
+            </>
           )}
           <ThemeToggle />
         </div>

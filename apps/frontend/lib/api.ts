@@ -94,6 +94,7 @@ export interface RoundResponse {
   upPool: string;
   downPool: string;
   settled: boolean;
+  remainingTime: number;
   status?: string;
 }
 

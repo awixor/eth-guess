@@ -6,8 +6,8 @@ export function useCountdown(endTimeMs: number, onComplete?: () => void) {
 
   useEffect(() => {
     // Total duration for progress calculation (assuming 60s rounds for now)
-    // In a real app, you might pass the startTime or totalDuration in
     const totalDuration = 60000;
+    let hasCompleted = false;
 
     let animationFrameId: number;
 
@@ -22,7 +22,8 @@ export function useCountdown(endTimeMs: number, onComplete?: () => void) {
 
       if (remainingMs > 0) {
         animationFrameId = requestAnimationFrame(tick);
-      } else {
+      } else if (!hasCompleted) {
+        hasCompleted = true;
         onComplete?.();
       }
     };

@@ -11,9 +11,10 @@ import { SignInButton } from "@/components/auth/sign-in-button";
 interface AuthGateProps {
   round?: RoundResponse;
   endTimeMs: number;
+  onTimerComplete?: () => void;
 }
 
-export function AuthGate({ round, endTimeMs }: AuthGateProps) {
+export function AuthGate({ round, endTimeMs, onTimerComplete }: AuthGateProps) {
   const { user, isLoading: isAuthLoading } = useAuth();
   const { placeBet, isActionPending } = useGame();
 
@@ -59,6 +60,7 @@ export function AuthGate({ round, endTimeMs }: AuthGateProps) {
       >
         <CurrentRoundCard
           endTimeMs={endTimeMs}
+          onTimerComplete={onTimerComplete}
           upPercentage={upPercentage}
           onBetUp={() => handleBet(true)}
           onBetDown={() => handleBet(false)}
@@ -83,6 +85,7 @@ export function AuthGate({ round, endTimeMs }: AuthGateProps) {
         <div className="pointer-events-none select-none blur-sm opacity-40 p-4">
           <CurrentRoundCard
             endTimeMs={endTimeMs}
+            onTimerComplete={onTimerComplete}
             upPercentage={upPercentage}
             onBetUp={() => {}}
             onBetDown={() => {}}

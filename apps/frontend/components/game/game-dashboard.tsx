@@ -8,7 +8,7 @@ import { AnimatePresence } from "framer-motion";
 import { useGame } from "@/hooks/use-game";
 
 export function GameDashboard() {
-  const { price, round, isLoading } = useGame();
+  const { price, round, isLoading, refetchRound } = useGame();
   const [prevPrice, setPrevPrice] = useState(price);
   const [syncedEndTimeMs, setSyncedEndTimeMs] = useState(0);
 
@@ -20,13 +20,17 @@ export function GameDashboard() {
   }, [price, prevPrice]);
 
   useEffect(() => {
-    if (round) {
-      const remainingSeconds = Math.max(0, round.endTime - round.serverTime);
-
-      const target = Date.now() + remainingSeconds * 1000;
-      setTimeout(() => setSyncedEndTimeMs(target), 0);
+    if (round && typeof round.remainingTime === "number") {
+      const target = Date.now() + round.remainingTime * 1000;
+      const timeoutId = setTimeout(() => setSyncedEndTimeMs(target), 0);
+      return () => clearTimeout(timeoutId);
     }
-  }, [round?.endTime, round?.serverTime, round?.roundId, round]);
+  }, [round?.remainingTime, round?.roundId, round]);
+
+  const handleTimerComplete = () => {
+    console.log("Timer complete: refetching round...");
+    void refetchRound();
+  };
 
   if (isLoading && !round) {
     return (
@@ -53,7 +57,11 @@ export function GameDashboard() {
         </div>
 
         <AnimatePresence mode="wait">
-          <AuthGate round={round} endTimeMs={syncedEndTimeMs} />
+          <AuthGate
+            round={round}
+            endTimeMs={syncedEndTimeMs}
+            onTimerComplete={handleTimerComplete}
+          />
         </AnimatePresence>
 
         <Leaderboard />

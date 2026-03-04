@@ -72,11 +72,27 @@ contract EthGuess {
     // Events
     // -------------------------------------------------------------------------
 
-    event RoundStarted(uint256 indexed roundId, uint256 startPrice, uint256 startTime);
-    event BetPlaced(uint256 indexed roundId, address indexed player, bool guessedUp, uint256 amount);
+    event RoundStarted(
+        uint256 indexed roundId,
+        uint256 startPrice,
+        uint256 startTime
+    );
+    event BetPlaced(
+        uint256 indexed roundId,
+        address indexed player,
+        bool guessedUp,
+        uint256 amount
+    );
     event RoundSettled(uint256 indexed roundId, uint256 endPrice, bool upWon);
-    event WinningsClaimed(uint256 indexed roundId, address indexed player, uint256 amount);
-    event OperatorChanged(address indexed previousOperator, address indexed newOperator);
+    event WinningsClaimed(
+        uint256 indexed roundId,
+        address indexed player,
+        uint256 amount
+    );
+    event OperatorChanged(
+        address indexed previousOperator,
+        address indexed newOperator
+    );
     event MinBetChanged(uint256 newMinBet);
 
     // -------------------------------------------------------------------------
@@ -124,7 +140,7 @@ contract EthGuess {
         if (currentRoundId > 0) {
             Round storage currentRound = rounds[currentRoundId];
             if (currentRound.settled) revert EthGuess__InvalidExecuteRound();
-            if (block.timestamp - currentRound.startTime < 60) {
+            if (block.timestamp - currentRound.startTime < 50) {
                 revert EthGuess__InvalidExecuteRound();
             }
 
@@ -170,7 +186,11 @@ contract EthGuess {
         if (bets[currentRoundId][msg.sender].amount > 0) {
             revert EthGuess__AlreadyPlacedBet();
         }
-        bets[currentRoundId][msg.sender] = Prediction({guessedUp: _guessUp, amount: msg.value, claimed: false});
+        bets[currentRoundId][msg.sender] = Prediction({
+            guessedUp: _guessUp,
+            amount: msg.value,
+            claimed: false
+        });
         round.totalPool += msg.value;
 
         if (_guessUp) {
@@ -207,7 +227,7 @@ contract EthGuess {
         protocolFee += feeToTake;
         prediction.claimed = true;
 
-        (bool success,) = payable(msg.sender).call{value: payout}("");
+        (bool success, ) = payable(msg.sender).call{value: payout}("");
         if (!success) revert EthGuess__TransferFailed();
         emit WinningsClaimed(_roundId, msg.sender, reward);
     }
@@ -233,7 +253,7 @@ contract EthGuess {
         if (toTransfer == 0) revert EthGuess__NoFeesToWithdraw();
 
         protocolFee = 0;
-        (bool success,) = _to.call{value: toTransfer}("");
+        (bool success, ) = _to.call{value: toTransfer}("");
         if (!success) revert EthGuess__TransferFailed();
     }
 
