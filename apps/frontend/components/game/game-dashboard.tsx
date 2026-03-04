@@ -10,6 +10,7 @@ import { useGame } from "@/hooks/use-game";
 export function GameDashboard() {
   const { price, round, isLoading } = useGame();
   const [prevPrice, setPrevPrice] = useState(price);
+  const [syncedEndTimeMs, setSyncedEndTimeMs] = useState(0);
 
   useEffect(() => {
     if (price !== prevPrice) {
@@ -18,6 +19,15 @@ export function GameDashboard() {
     }
   }, [price, prevPrice]);
 
+  useEffect(() => {
+    if (round) {
+      const remainingSeconds = Math.max(0, round.endTime - round.serverTime);
+
+      const target = Date.now() + remainingSeconds * 1000;
+      setTimeout(() => setSyncedEndTimeMs(target), 0);
+    }
+  }, [round?.endTime, round?.serverTime, round?.roundId, round]);
+
   if (isLoading && !round) {
     return (
       <div className="flex flex-1 items-center justify-center">
@@ -25,9 +35,6 @@ export function GameDashboard() {
       </div>
     );
   }
-
-  // Calculate time remaining based on on-chain startTime (60s rounds)
-  const roundEndTimeMs = round ? round.startTime * 1000 + 60000 : 0;
 
   return (
     <div className="flex flex-1 flex-col items-center justify-start font-sans overflow-hidden w-full relative pt-8 pb-12">
@@ -46,7 +53,7 @@ export function GameDashboard() {
         </div>
 
         <AnimatePresence mode="wait">
-          <AuthGate round={round} endTimeMs={roundEndTimeMs} />
+          <AuthGate round={round} endTimeMs={syncedEndTimeMs} />
         </AnimatePresence>
 
         <Leaderboard />

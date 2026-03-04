@@ -7,18 +7,16 @@ import { QUERY_KEYS } from "@/lib/routes";
 import { EthGuessABI } from "@/lib/EthGuessABI";
 import { parseEther } from "viem";
 
-export function useGame() {
-  const contractAddress = (process.env.NEXT_PUBLIC_CONTRACT_ADDRESS ||
-    "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512") as `0x${string}`;
+const contractAddress = (process.env.NEXT_PUBLIC_CONTRACT_ADDRESS ||
+  "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512") as `0x${string}`;
 
-  // 1. Fetch live ETH price from backend (every 10s)
+export function useGame() {
   const { data: price = 0, isLoading: isPriceLoading } = useQuery({
     queryKey: QUERY_KEYS.price.current,
     queryFn: fetchCurrentPrice,
     refetchInterval: 10000,
   });
 
-  // 2. Fetch current active round from backend (every 30s)
   const {
     data: round,
     isLoading: isRoundLoading,
@@ -29,7 +27,6 @@ export function useGame() {
     refetchInterval: 30000,
   });
 
-  // 3. Contract Interactions
   const {
     mutateAsync: writeContractAsync,
     isPending: isTxSending,

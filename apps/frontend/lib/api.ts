@@ -88,6 +88,8 @@ export interface RoundResponse {
   roundId: number;
   startPrice: string;
   startTime: number;
+  endTime: number;
+  serverTime: number;
   totalPool: string;
   upPool: string;
   downPool: string;
