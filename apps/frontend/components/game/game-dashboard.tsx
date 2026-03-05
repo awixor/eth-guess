@@ -6,11 +6,19 @@ import { AuthGate } from "@/components/game/auth-gate";
 import { useState, useEffect } from "react";
 import { AnimatePresence } from "framer-motion";
 import { useGame } from "@/hooks/use-game";
+import { useCountdown } from "@/hooks/use-countdown";
 
 export function GameDashboard() {
-  const { price, round, isLoading } = useGame();
+  const { price, round, myStats, isLoading, refetchRound } = useGame();
   const [prevPrice, setPrevPrice] = useState(price);
   const [syncedEndTimeMs, setSyncedEndTimeMs] = useState(0);
+
+  const { timeLeft } = useCountdown(syncedEndTimeMs, () => {
+    console.log("Timer complete: refetching round...");
+    void refetchRound();
+  });
+
+  const isBettingDisabled = timeLeft <= 30;
 
   useEffect(() => {
     if (price !== prevPrice) {
@@ -20,13 +28,12 @@ export function GameDashboard() {
   }, [price, prevPrice]);
 
   useEffect(() => {
-    if (round) {
-      const remainingSeconds = Math.max(0, round.endTime - round.serverTime);
-
-      const target = Date.now() + remainingSeconds * 1000;
-      setTimeout(() => setSyncedEndTimeMs(target), 0);
+    if (round && typeof round.remainingTime === "number") {
+      const target = Date.now() + round.remainingTime * 1000;
+      const timeoutId = setTimeout(() => setSyncedEndTimeMs(target), 0);
+      return () => clearTimeout(timeoutId);
     }
-  }, [round?.endTime, round?.serverTime, round?.roundId, round]);
+  }, [round?.remainingTime, round?.roundId, round]);
 
   if (isLoading && !round) {
     return (
@@ -53,7 +60,12 @@ export function GameDashboard() {
         </div>
 
         <AnimatePresence mode="wait">
-          <AuthGate round={round} endTimeMs={syncedEndTimeMs} />
+          <AuthGate
+            round={round}
+            myStats={myStats}
+            endTimeMs={syncedEndTimeMs}
+            isBettingDisabled={isBettingDisabled}
+          />
         </AnimatePresence>
 
         <Leaderboard />

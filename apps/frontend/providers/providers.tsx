@@ -13,6 +13,7 @@ import { config } from "@/config/wagmi";
 import { useTheme } from "next-themes";
 import { useIsMounted } from "@/hooks/use-is-mounted";
 import { AuthProvider } from "@/context/auth-context";
+import { SocketProvider } from "@/context/socket-context";
 
 const queryClient = new QueryClient();
 
@@ -42,7 +43,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
           disableTransitionOnChange
         >
           <RainbowKitWrapper>
-            <AuthProvider>{children}</AuthProvider>
+            <AuthProvider>
+              <SocketProvider>{children}</SocketProvider>
+            </AuthProvider>
           </RainbowKitWrapper>
         </ThemeProvider>
       </QueryClientProvider>

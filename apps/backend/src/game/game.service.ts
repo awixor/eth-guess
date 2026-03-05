@@ -13,6 +13,8 @@ import { privateKeyToAccount, PrivateKeyAccount } from 'viem/accounts';
 import { foundry, sepolia } from 'viem/chains';
 import { PriceService } from '../price/price.service';
 import { EthGuessABI } from './EthGuessABI';
+import { GameGateway } from './game.gateway';
+import { RoundInfo, UserStats } from './types/game.types';
 
 @Injectable()
 export class GameService implements OnModuleInit {
@@ -21,10 +23,16 @@ export class GameService implements OnModuleInit {
   private walletClient: WalletClient;
   private account: PrivateKeyAccount;
   private contractAddress: `0x${string}`;
+  private isExecuting = false;
+
+  private sleep(ms: number) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
 
   constructor(
     private readonly configService: ConfigService,
     private readonly priceService: PriceService,
+    private readonly gameGateway: GameGateway,
   ) {}
 
   onModuleInit() {
@@ -76,19 +84,29 @@ export class GameService implements OnModuleInit {
    */
   @Cron(CronExpression.EVERY_MINUTE)
   async handleExecuteRound() {
-    if (this.contractAddress === '0x0000000000000000000000000000000000000000') {
+    if (
+      this.contractAddress === '0x0000000000000000000000000000000000000000' ||
+      this.isExecuting
+    ) {
+      if (this.isExecuting) {
+        this.logger.warn('[Oracle] Execution already in progress, skipping...');
+      }
       return;
     }
 
-    const currentPriceFloat = this.priceService.getCurrentPrice();
-    // Assuming the contract price expects 8 decimals (like chainlink)
-    const priceWithDecimals = BigInt(Math.floor(currentPriceFloat * 1e8));
-
-    this.logger.log(
-      `[Oracle] Attempting to execute round with price: $${currentPriceFloat} (${priceWithDecimals})`,
-    );
-
+    this.isExecuting = true;
     try {
+      // Add 2s buffer to ensure blockchain clock has ticked past the minute
+      await this.sleep(2000);
+
+      const currentPriceFloat = this.priceService.getCurrentPrice();
+      // Assuming the contract price expects 8 decimals (like chainlink)
+      const priceWithDecimals = BigInt(Math.floor(currentPriceFloat * 1e8));
+
+      this.logger.log(
+        `[Oracle] Attempting to execute round with price: $${currentPriceFloat} (${priceWithDecimals})`,
+      );
+
       // Simulate first to catch reverts quickly (e.g. TooEarly)
       const { request } = await this.publicClient.simulateContract({
         address: this.contractAddress,
@@ -103,17 +121,27 @@ export class GameService implements OnModuleInit {
 
       await this.publicClient.waitForTransactionReceipt({ hash: txHash });
       this.logger.log(`[Oracle] Round successfully executed and mined.`);
+
+      // Emit WebSocket events to notify clients
+      const roundInfo = await this.getCurrentRoundInfo();
+      if ('roundId' in roundInfo && roundInfo.roundId !== 0) {
+        this.gameGateway.emitRoundStarted(roundInfo);
+      }
     } catch (error) {
       this.logger.error(
         `[Oracle] Failed to execute round: ${error instanceof Error ? error.message : String(error)}`,
       );
+    } finally {
+      this.isExecuting = false;
     }
   }
 
   /**
    * Helper function for the Backend API to expose current round data
    */
-  async getCurrentRoundInfo() {
+  async getCurrentRoundInfo(): Promise<
+    RoundInfo | { status: string; details?: string }
+  > {
     if (this.contractAddress === '0x0000000000000000000000000000000000000000') {
       return { status: 'CONTRACT_NOT_CONFIGURED' };
     }
@@ -136,6 +164,7 @@ export class GameService implements OnModuleInit {
           upPool: '0',
           downPool: '0',
           settled: false,
+          remainingTime: 0,
           status: 'NOT_STARTED',
         };
       }
@@ -163,6 +192,7 @@ export class GameService implements OnModuleInit {
         upPool: formatUnits(roundData[5], 18),
         downPool: formatUnits(roundData[6], 18),
         settled: roundData[7],
+        remainingTime: Math.max(0, endTime - Number(block.timestamp)),
       };
     } catch (error) {
       this.logger.error(
@@ -178,9 +208,113 @@ export class GameService implements OnModuleInit {
         upPool: '0',
         downPool: '0',
         settled: false,
+        remainingTime: 0,
         status: 'ERROR_FETCHING_DATA',
         details: error instanceof Error ? error.message : String(error),
       };
+    }
+  }
+
+  async getMyStats(address: string): Promise<UserStats> {
+    if (this.contractAddress === '0x0000000000000000000000000000000000000000') {
+      return {};
+    }
+
+    try {
+      const currentRoundId = await this.publicClient.readContract({
+        address: this.contractAddress,
+        abi: EthGuessABI,
+        functionName: 'currentRoundId',
+      });
+
+      const stats: UserStats = {};
+
+      // 1. Current Round Bet
+      if (currentRoundId > 0n) {
+        const bet = (await this.publicClient.readContract({
+          address: this.contractAddress,
+          abi: EthGuessABI,
+          functionName: 'bets',
+          args: [currentRoundId, address as `0x${string}`],
+        })) as [boolean, bigint, boolean];
+
+        if (bet[1] > 0n) {
+          stats.currentBet = {
+            amount: formatUnits(bet[1], 18),
+            guessedUp: bet[0],
+            claimed: bet[2],
+          };
+        }
+      }
+
+      // 2. Previous Round Result
+      if (currentRoundId > 1n) {
+        const prevRoundId = currentRoundId - 1n;
+        const [bet, roundData, feePercent] = (await Promise.all([
+          this.publicClient.readContract({
+            address: this.contractAddress,
+            abi: EthGuessABI,
+            functionName: 'bets',
+            args: [prevRoundId, address as `0x${string}`],
+          }),
+          this.publicClient.readContract({
+            address: this.contractAddress,
+            abi: EthGuessABI,
+            functionName: 'rounds',
+            args: [prevRoundId],
+          }),
+          this.publicClient.readContract({
+            address: this.contractAddress,
+            abi: EthGuessABI,
+            functionName: 'feePercent',
+          }),
+        ])) as [
+          readonly [boolean, bigint, boolean],
+          readonly [
+            bigint,
+            bigint,
+            bigint,
+            bigint,
+            bigint,
+            bigint,
+            bigint,
+            boolean,
+          ],
+          bigint,
+        ];
+
+        if (bet[1] > 0n && roundData[7]) {
+          // settled
+          const upWon: boolean = roundData[1] > roundData[0]; // endPrice > startPrice
+          const won: boolean = bet[0] === upWon;
+          let payout = '0';
+
+          if (won) {
+            const totalPool = roundData[4];
+            const winningPool = upWon ? roundData[5] : roundData[6];
+            if (winningPool > 0n) {
+              const reward = (bet[1] * totalPool) / winningPool;
+              const feeToTake = (reward * BigInt(feePercent)) / 10000n;
+              payout = formatUnits(reward - feeToTake, 18);
+            }
+          }
+
+          stats.previousRound = {
+            roundId: Number(prevRoundId),
+            won,
+            payout,
+            claimed: bet[2],
+            guessedUp: bet[0],
+          };
+        }
+      }
+
+      return stats;
+    } catch (error) {
+      this.logger.error(
+        `Error fetching user stats: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      return {};
     }
   }
 }
