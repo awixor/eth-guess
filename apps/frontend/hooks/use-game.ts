@@ -10,12 +10,15 @@ import { useEffect } from "react";
 import { useSocket } from "@/context/socket-context";
 import { GameEvent } from "@/lib/game.types";
 import { useAuth } from "@/context/auth-context";
+import { useSessionKey } from "@/context/session-key-context";
 
 const contractAddress = (process.env.NEXT_PUBLIC_CONTRACT_ADDRESS ||
   "0x5FbDB2315678afecb367f032d93F642f64180aa3") as `0x${string}`;
 
 export function useGame() {
   const { socket } = useSocket();
+  const { isSessionActive, placeBetWithSession } = useSessionKey();
+
   const { data: price = 0, isLoading: isPriceLoading } = useQuery({
     queryKey: QUERY_KEYS.price.current,
     queryFn: fetchCurrentPrice,
@@ -75,6 +78,17 @@ export function useGame() {
     });
 
   const placeBet = async (guessUp: boolean, amountEth: string) => {
+    if (isSessionActive) {
+      try {
+        return await placeBetWithSession(guessUp, amountEth);
+      } catch (err) {
+        console.warn(
+          "Session-key bet failed, falling back to wallet confirmation:",
+          err,
+        );
+      }
+    }
+
     return await writeContractAsync({
       address: contractAddress,
       abi: EthGuessABI,

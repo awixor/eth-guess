@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { CurrentRoundCard } from "@/components/game/current-round-card";
 import { SignInButton } from "@/components/auth/sign-in-button";
+import { SessionKeyPanel } from "@/components/game/session-key-panel";
 
 interface AuthGateProps {
   round?: RoundResponse;
@@ -79,9 +80,9 @@ export function AuthGate({
           isDisabled={isBettingDisabled}
         />
 
-        {/* User Stats/Status */}
+        <SessionKeyPanel />
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-lg">
-          {/* Current Bet */}
           <div className="bg-white/50 dark:bg-zinc-900/50 backdrop-blur-sm border border-zinc-200/50 dark:border-white/5 rounded-2xl p-4 flex flex-col gap-2">
             <span className="text-[10px] uppercase tracking-widest font-bold text-zinc-400">
               Current Prediction
@@ -105,7 +106,6 @@ export function AuthGate({
             )}
           </div>
 
-          {/* Previous Result */}
           <div className="bg-white/50 dark:bg-zinc-900/50 backdrop-blur-sm border border-zinc-200/50 dark:border-white/5 rounded-2xl p-4 flex flex-col gap-2">
             <span className="text-[10px] uppercase tracking-widest font-bold text-zinc-400">
               Previous Round

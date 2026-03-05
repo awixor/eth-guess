@@ -14,6 +14,7 @@ import { useTheme } from "next-themes";
 import { useIsMounted } from "@/hooks/use-is-mounted";
 import { AuthProvider } from "@/context/auth-context";
 import { SocketProvider } from "@/context/socket-context";
+import { SessionKeyProvider } from "@/context/session-key-context";
 
 const queryClient = new QueryClient();
 
@@ -44,7 +45,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
         >
           <RainbowKitWrapper>
             <AuthProvider>
-              <SocketProvider>{children}</SocketProvider>
+              <SessionKeyProvider>
+                <SocketProvider>{children}</SocketProvider>
+              </SessionKeyProvider>
             </AuthProvider>
           </RainbowKitWrapper>
         </ThemeProvider>
