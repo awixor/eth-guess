@@ -17,3 +17,20 @@ export interface RoundInfo {
   status?: string;
   details?: string;
 }
+
+export interface UserBet {
+  amount: string;
+  guessedUp: boolean;
+  claimed: boolean;
+}
+
+export interface UserStats {
+  currentBet?: UserBet;
+  previousRound?: {
+    roundId: number;
+    won: boolean;
+    payout: string;
+    claimed: boolean;
+    guessedUp: boolean;
+  };
+}

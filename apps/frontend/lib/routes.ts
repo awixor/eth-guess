@@ -10,6 +10,7 @@ export const ROUTES = {
   },
   game: {
     currentRound: "/game/current-round",
+    myStats: "/game/my-stats",
     whaleRoom: "/game/whale-room",
   },
   price: {
@@ -28,6 +29,7 @@ export const QUERY_KEYS = {
   },
   game: {
     round: ["game", "round"] as const,
+    myStats: ["game", "my-stats"] as const,
     whaleRoom: ["game", "whale-room"] as const,
   },
   price: {

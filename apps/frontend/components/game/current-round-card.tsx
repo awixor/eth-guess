@@ -10,6 +10,7 @@ interface CurrentRoundCardProps {
   upPercentage: number;
   onBetUp: () => void;
   onBetDown: () => void;
+  isDisabled?: boolean;
 }
 
 export function CurrentRoundCard({
@@ -18,6 +19,7 @@ export function CurrentRoundCard({
   upPercentage,
   onBetUp,
   onBetDown,
+  isDisabled,
 }: CurrentRoundCardProps) {
   return (
     <div className="flex w-full justify-center mt-4">
@@ -29,7 +31,11 @@ export function CurrentRoundCard({
           }
           upPercentage={upPercentage}
         >
-          <ActionButtons onBetUp={onBetUp} onBetDown={onBetDown} />
+          <ActionButtons
+            onBetUp={onBetUp}
+            onBetDown={onBetDown}
+            disabled={isDisabled}
+          />
         </RoundCard>
       </div>
     </div>

@@ -14,7 +14,7 @@ import { foundry, sepolia } from 'viem/chains';
 import { PriceService } from '../price/price.service';
 import { EthGuessABI } from './EthGuessABI';
 import { GameGateway } from './game.gateway';
-import { RoundInfo } from './types/game.types';
+import { RoundInfo, UserStats } from './types/game.types';
 
 @Injectable()
 export class GameService implements OnModuleInit {
@@ -212,6 +212,109 @@ export class GameService implements OnModuleInit {
         status: 'ERROR_FETCHING_DATA',
         details: error instanceof Error ? error.message : String(error),
       };
+    }
+  }
+
+  async getMyStats(address: string): Promise<UserStats> {
+    if (this.contractAddress === '0x0000000000000000000000000000000000000000') {
+      return {};
+    }
+
+    try {
+      const currentRoundId = await this.publicClient.readContract({
+        address: this.contractAddress,
+        abi: EthGuessABI,
+        functionName: 'currentRoundId',
+      });
+
+      const stats: UserStats = {};
+
+      // 1. Current Round Bet
+      if (currentRoundId > 0n) {
+        const bet = (await this.publicClient.readContract({
+          address: this.contractAddress,
+          abi: EthGuessABI,
+          functionName: 'bets',
+          args: [currentRoundId, address as `0x${string}`],
+        })) as [boolean, bigint, boolean];
+
+        if (bet[1] > 0n) {
+          stats.currentBet = {
+            amount: formatUnits(bet[1], 18),
+            guessedUp: bet[0],
+            claimed: bet[2],
+          };
+        }
+      }
+
+      // 2. Previous Round Result
+      if (currentRoundId > 1n) {
+        const prevRoundId = currentRoundId - 1n;
+        const [bet, roundData, feePercent] = (await Promise.all([
+          this.publicClient.readContract({
+            address: this.contractAddress,
+            abi: EthGuessABI,
+            functionName: 'bets',
+            args: [prevRoundId, address as `0x${string}`],
+          }),
+          this.publicClient.readContract({
+            address: this.contractAddress,
+            abi: EthGuessABI,
+            functionName: 'rounds',
+            args: [prevRoundId],
+          }),
+          this.publicClient.readContract({
+            address: this.contractAddress,
+            abi: EthGuessABI,
+            functionName: 'feePercent',
+          }),
+        ])) as [
+          readonly [boolean, bigint, boolean],
+          readonly [
+            bigint,
+            bigint,
+            bigint,
+            bigint,
+            bigint,
+            bigint,
+            bigint,
+            boolean,
+          ],
+          bigint,
+        ];
+
+        if (bet[1] > 0n && roundData[7]) {
+          // settled
+          const upWon: boolean = roundData[1] > roundData[0]; // endPrice > startPrice
+          const won: boolean = bet[0] === upWon;
+          let payout = '0';
+
+          if (won) {
+            const totalPool = roundData[4];
+            const winningPool = upWon ? roundData[5] : roundData[6];
+            if (winningPool > 0n) {
+              const reward = (bet[1] * totalPool) / winningPool;
+              const feeToTake = (reward * BigInt(feePercent)) / 10000n;
+              payout = formatUnits(reward - feeToTake, 18);
+            }
+          }
+
+          stats.previousRound = {
+            roundId: Number(prevRoundId),
+            won,
+            payout,
+            claimed: bet[2],
+            guessedUp: bet[0],
+          };
+        }
+      }
+
+      return stats;
+    } catch (error) {
+      this.logger.error(
+        `Error fetching user stats: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      return {};
     }
   }
 }

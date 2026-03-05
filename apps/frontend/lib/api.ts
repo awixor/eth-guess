@@ -1,4 +1,5 @@
 import { ROUTES } from "@/lib/routes";
+import { UserStats } from "./game.types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
@@ -116,6 +117,18 @@ export async function fetchCurrentRound(): Promise<RoundResponse> {
   if (!res.ok) throw new Error(await parseError(res));
   const data: RoundResponse = await res.json();
   return data;
+}
+
+/** GET /api/game/my-stats */
+export async function fetchMyStats(): Promise<UserStats> {
+  const res = await fetch(`${API_BASE}${ROUTES.game.myStats}`, {
+    credentials: "include",
+    cache: "no-store",
+  });
+
+  if (res.status === 401) return {};
+  if (!res.ok) throw new Error(await parseError(res));
+  return await res.json();
 }
 
 /** POST /api/auth/logout */
